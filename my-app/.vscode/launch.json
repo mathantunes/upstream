@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "debug server",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev"
+      },
+      {
+        "name": "debug client",
+        "type": "pwa-chrome",
+        "request": "launch",
+        "url": "http://localhost:3000"
+      },
+      {
+        "name": "debug full",
+        "type": "node-terminal",
+        "request": "launch",
+        "command": "npm run dev",
+        "console": "integratedTerminal",
+        "serverReadyAction": {
+          "pattern": "started server on .+, url: (https?://.+)",
+          "uriFormat": "%s",
+          "action": "debugWithChrome"
+        }
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Mocha Current File",
+        "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+        "args": [
+          "--no-timeouts",
+          "--colors",
+          "${file}",
+          "--require",
+          "ts-node/register"
+        ],
+        "console": "integratedTerminal",
+        "sourceMaps": true,
+        "internalConsoleOptions": "neverOpen"
+      }
+    ]
+  }
