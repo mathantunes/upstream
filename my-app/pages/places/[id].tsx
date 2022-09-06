@@ -8,7 +8,7 @@ import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
 import { CardActionArea } from '@mui/material';
 import { isEqual } from "lodash";
-import moment from "moment";
+import moment, { Moment } from "moment";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
@@ -37,7 +37,11 @@ const ViewPlace = () => {
 							{
 								place.openingHours &&
 								<>
-									{isCurrentlyOpen(place.openingHours) ? <>Open</> : <>Closed</>}
+									{isCurrentlyOpen(place.openingHours) ? <div>Open</div> : <div>Closed</div>}
+
+									{isCurrentlyOpen(place.openingHours) ?
+										<>Closes at: {getNextClosingHour(place.openingHours).format('DD-MM-YYYY HH:mm')}</> :
+										<>Opens at: {getNextOpeningHours(place.openingHours)?.format('DD-MM-YYYY HH:mm')}</>}
 									<Typography variant="h6">Opening Hours</Typography>
 									<ViewOpeningHours openingHours={place.openingHours} />
 								</>
@@ -51,16 +55,37 @@ const ViewPlace = () => {
 }
 
 
-const showNextOpeningHours = (openingHours: OpeningHours) => {
+const getNextOpeningHours = (openingHours: OpeningHours): Moment | undefined => {
 	// Is currently closed and we show the next opening time
 	// First try to find opening in the same day
 	// Then try to find opening in the next day
 	// Sunday -> should route back to monday.
+	const dateTime = moment('23:05', 'HH:mm').add({ days: 3 });
+	const weekDay = dateTime.format('dddd');
+	const day = openingHours.days[weekDay.toLowerCase() as keyof Days];
+	if(!day) {
+		return undefined;
+	}
+	// Same day opens again
+	const openInTheSameDay = day.find(({ start }) => dateTime.isBefore(moment(start, 'HH:mm')));
+	if (openInTheSameDay) {
+		return moment(openInTheSameDay.start, 'HH:mm');
+	}
+
+	for (let i = 1; i < 7; i++) {
+		// Wed, Thurs...
+		const nextWeekDay = dateTime.clone().add({ days: i }).format('dddd').toLowerCase();
+		const nextDay = openingHours.days[nextWeekDay as keyof Days];
+		if (!nextDay || nextDay?.length === 0) continue;
+		const firstTimeRange = nextDay[0];
+		return moment(`${dateTime.clone().format('DD-MM-YYYY')} ${firstTimeRange.start}`, 'DD-MM-YYYY HH:mm').add({ days: i });
+	}
+	return undefined;
 }
 
 const getNextClosingHour = (openingHours: OpeningHours) => {
 	const range = getCurrentRange(openingHours);
-	return range?.end;
+	return moment(range?.end, 'HH:mm');
 }
 
 const getCurrentRange = (openingHours: OpeningHours) => {
