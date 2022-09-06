@@ -37,7 +37,7 @@ const ViewPlace = () => {
 							{
 								place.openingHours &&
 								<>
-									{ isCurrentlyOpen(place.openingHours) ? <>Open</> : <>Closed</> }
+									{isCurrentlyOpen(place.openingHours) ? <>Open</> : <>Closed</>}
 									<Typography variant="h6">Opening Hours</Typography>
 									<ViewOpeningHours openingHours={place.openingHours} />
 								</>
@@ -50,15 +50,30 @@ const ViewPlace = () => {
 	</div >)
 }
 
-const isCurrentlyOpen = (openingHours: OpeningHours) => {
+
+const showNextOpeningHours = (openingHours: OpeningHours) => {
+	// Is currently closed and we show the next opening time
+	// First try to find opening in the same day
+	// Then try to find opening in the next day
+	// Sunday -> should route back to monday.
+}
+
+const getNextClosingHour = (openingHours: OpeningHours) => {
+	const range = getCurrentRange(openingHours);
+	return range?.end;
+}
+
+const getCurrentRange = (openingHours: OpeningHours) => {
 	const dateTime = moment(new Date(), 'HH:mm');
 	const weekDay = dateTime.format('dddd');
 	const day = openingHours.days[weekDay.toLowerCase() as keyof Days];
 
-	if (!day) return false;
-
-	return day.some(({ start, end }) =>
+	return day.find(({ start, end }) =>
 		dateTime.isSameOrAfter(moment(start, 'HH:mm')) && dateTime.isBefore(moment(end, 'HH:mm')));
+}
+
+const isCurrentlyOpen = (openingHours: OpeningHours): boolean => {
+	return !!getCurrentRange(openingHours);
 	// Take day of the week and time of the current user
 	// Try to find the same day on the Opening Hours
 	// Try to find a range that fits tthe time of the user
