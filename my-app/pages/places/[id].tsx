@@ -8,6 +8,7 @@ import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
 import { CardActionArea } from '@mui/material';
 import { isEqual } from "lodash";
+import moment from "moment";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
@@ -34,10 +35,11 @@ const ViewPlace = () => {
 								{place.address}
 							</Typography>
 							{
-								place.openingHours && <>
+								place.openingHours &&
+								<>
+									{ isCurrentlyOpen(place.openingHours) ? <>Open</> : <>Closed</> }
 									<Typography variant="h6">Opening Hours</Typography>
-									<ViewOpeningHours
-										openingHours={place.openingHours} />
+									<ViewOpeningHours openingHours={place.openingHours} />
 								</>
 							}
 						</CardContent>
@@ -45,7 +47,22 @@ const ViewPlace = () => {
 				</Card>
 			</>
 		}
-	</div>)
+	</div >)
+}
+
+const isCurrentlyOpen = (openingHours: OpeningHours) => {
+	const dateTime = moment(new Date(), 'HH:mm');
+	const weekDay = dateTime.format('dddd');
+	const day = openingHours.days[weekDay.toLowerCase() as keyof Days];
+
+	if (!day) return false;
+
+	return day.some(({ start, end }) =>
+		dateTime.isSameOrAfter(moment(start, 'HH:mm')) && dateTime.isBefore(moment(end, 'HH:mm')));
+	// Take day of the week and time of the current user
+	// Try to find the same day on the Opening Hours
+	// Try to find a range that fits tthe time of the user
+	// Type has to be OPEN
 }
 
 const ViewOpeningHours = ({ openingHours }: { openingHours: OpeningHours }) => {
