@@ -17,6 +17,7 @@ const ViewPlace = () => {
 	const { id } = router.query;
 
 	const { data: place, error } = useSWR<Place>(`/api/places/${id}`, fetcher);
+	const currentTime = moment();
 	return (<div style={{
 		margin: '10px'
 	}}>
@@ -37,11 +38,11 @@ const ViewPlace = () => {
 							{
 								place.openingHours &&
 								<>
-									{isCurrentlyOpen(place.openingHours) ? <div>Open</div> : <div>Closed</div>}
+									{isCurrentlyOpen(place.openingHours, currentTime) ? <div>Open</div> : <div>Closed</div>}
 
-									{isCurrentlyOpen(place.openingHours) ?
-										<>Closes at: {getNextClosingHour(place.openingHours).format('DD-MM-YYYY HH:mm')}</> :
-										<>Opens at: {getNextOpeningHours(place.openingHours)?.format('DD-MM-YYYY HH:mm')}</>}
+									{isCurrentlyOpen(place.openingHours, currentTime) ?
+										<>Closes at: {getNextClosingHour(place.openingHours, currentTime).format('DD-MM-YYYY HH:mm')}</> :
+										<>Opens at: {getNextOpeningHours(place.openingHours, currentTime)?.format('DD-MM-YYYY HH:mm')}</>}
 									<Typography variant="h6">Opening Hours</Typography>
 									<ViewOpeningHours openingHours={place.openingHours} />
 								</>
@@ -55,50 +56,48 @@ const ViewPlace = () => {
 }
 
 
-const getNextOpeningHours = (openingHours: OpeningHours): Moment | undefined => {
+const getNextOpeningHours = (openingHours: OpeningHours, currentTime: Moment): Moment | undefined => {
 	// Is currently closed and we show the next opening time
 	// First try to find opening in the same day
 	// Then try to find opening in the next day
 	// Sunday -> should route back to monday.
-	const dateTime = moment('23:05', 'HH:mm').add({ days: 3 });
-	const weekDay = dateTime.format('dddd');
+	const weekDay = currentTime.format('dddd');
 	const day = openingHours.days[weekDay.toLowerCase() as keyof Days];
-	if(!day) {
+	if (!day) {
 		return undefined;
 	}
 	// Same day opens again
-	const openInTheSameDay = day.find(({ start }) => dateTime.isBefore(moment(start, 'HH:mm')));
+	const openInTheSameDay = day.find(({ start }) => currentTime.isBefore(moment(start, 'HH:mm')));
 	if (openInTheSameDay) {
 		return moment(openInTheSameDay.start, 'HH:mm');
 	}
 
 	for (let i = 1; i < 7; i++) {
 		// Wed, Thurs...
-		const nextWeekDay = dateTime.clone().add({ days: i }).format('dddd').toLowerCase();
+		const nextWeekDay = currentTime.clone().add({ days: i }).format('dddd').toLowerCase();
 		const nextDay = openingHours.days[nextWeekDay as keyof Days];
 		if (!nextDay || nextDay?.length === 0) continue;
 		const firstTimeRange = nextDay[0];
-		return moment(`${dateTime.clone().format('DD-MM-YYYY')} ${firstTimeRange.start}`, 'DD-MM-YYYY HH:mm').add({ days: i });
+		return moment(`${currentTime.clone().format('DD-MM-YYYY')} ${firstTimeRange.start}`, 'DD-MM-YYYY HH:mm').add({ days: i });
 	}
 	return undefined;
 }
 
-const getNextClosingHour = (openingHours: OpeningHours) => {
-	const range = getCurrentRange(openingHours);
+const getNextClosingHour = (openingHours: OpeningHours, currentTime: Moment) => {
+	const range = getCurrentRange(openingHours, currentTime);
 	return moment(range?.end, 'HH:mm');
 }
 
-const getCurrentRange = (openingHours: OpeningHours) => {
-	const dateTime = moment(new Date(), 'HH:mm');
-	const weekDay = dateTime.format('dddd');
+const getCurrentRange = (openingHours: OpeningHours, currentTime: Moment) => {
+	const weekDay = currentTime.format('dddd');
 	const day = openingHours.days[weekDay.toLowerCase() as keyof Days];
 
 	return day.find(({ start, end }) =>
-		dateTime.isSameOrAfter(moment(start, 'HH:mm')) && dateTime.isBefore(moment(end, 'HH:mm')));
+		currentTime.isSameOrAfter(moment(start, 'HH:mm')) && currentTime.isBefore(moment(end, 'HH:mm')));
 }
 
-const isCurrentlyOpen = (openingHours: OpeningHours): boolean => {
-	return !!getCurrentRange(openingHours);
+const isCurrentlyOpen = (openingHours: OpeningHours, currentTime: Moment): boolean => {
+	return !!getCurrentRange(openingHours, currentTime);
 	// Take day of the week and time of the current user
 	// Try to find the same day on the Opening Hours
 	// Try to find a range that fits tthe time of the user
